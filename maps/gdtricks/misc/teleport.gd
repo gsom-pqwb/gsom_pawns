@@ -5,7 +5,8 @@ class_name Teleport
 @export var dest: String = ""
 
 
-static var __teleports: Array[Teleport] = []
+# Keep the own script type out of the persistent default container.
+static var __teleports: Array[Node] = []
 
 
 func _ready() -> void:
@@ -18,7 +19,11 @@ func _exit_tree() -> void:
 
 
 static func find_by_tag(dest_tag: String) -> Teleport:
-	for tp: Teleport in __teleports:
+	for entry: Node in __teleports:
+		if not is_instance_valid(entry) or not entry is Teleport:
+			push_error("Invalid teleport registry entry")
+			return null
+		var tp: Teleport = entry
 		if tp.tag == dest_tag:
 			return tp
 	return null

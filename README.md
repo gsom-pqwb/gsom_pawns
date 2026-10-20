@@ -1,5 +1,11 @@
 # gsom_pawns
 
+## Shutdown verification on Godot 4.7.2
+
+The demo fields `Main.__instance` and `Teleport.__teleports` use the base types Node3D/Node. Methods validate each value and use a local variable of the specific Main/Teleport type. The static Main reference is cleared when the scene exits the tree. These changes do not alter the Pawns core API.
+
+All 38 scripts compile and the complete demo loads. Removing the scene and allowing subsequent frames to run produces a clean shutdown. A direct quit during playback can report remaining audio resources in a Godot 4.7.2 headless run on Windows; the same behavior reproduces with a single standard AudioStreamPlayer without Pawns. No audio-system workarounds were added to the addon. Whether this differs from a regular run with an audio device has not been established.
+
 Modular **Godot 4** framework for **character pawns**. Pawns interact
 with environment and triggers through handler nodes.
 
@@ -389,3 +395,7 @@ A few notes on FPS **human movement**:
 - Both AT (agtricks) and DH (destructo_hops) can be traversed in this demo and
 	are very similar to [HL1 version](https://www.youtube.com/watch?v=VbA7Dc4i898).
 	Maybe even slightly easier.
+
+## Contribution language
+
+Use English for all project-authored repository content and official communication, including source code, identifiers, comments, documentation, examples, configuration text, file and directory names, commit messages, issues, pull request titles and descriptions, reviews, and release notes.

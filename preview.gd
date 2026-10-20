@@ -21,7 +21,7 @@ var __DISPLAY_MONITORS: Dictionary[String, Performance.Monitor] = {
 	"RENDER_TOTAL_DRAW_CALLS_IN_FRAME": Performance.RENDER_TOTAL_DRAW_CALLS_IN_FRAME,
 }
 
-static var __instance: Main = null
+static var __instance: Node3D = null
 
 var __load_queue: Dictionary[String, Callable] = {}
 var __char_human: CharHuman = null
@@ -49,12 +49,21 @@ func _ready() -> void:
 	__load_async(__PATH_CTRL_RTS, __on_load_cases)
 
 
+func _exit_tree() -> void:
+	if __instance == self:
+		__instance = null
+
+
 static func __nop(_res: PackedScene, _path: String) -> void:
 	pass
 
 
 static func load_async(path: String, cb: Callable = Main.__nop) -> void:
-	__instance.__load_async(path, cb)
+	if not is_instance_valid(__instance) or not __instance is Main:
+		push_error("The demo loader requires an active Main scene")
+		return
+	var instance: Main = __instance
+	instance.__load_async(path, cb)
 
 
 func __on_load_cases(res: PackedScene, path: String) -> void:
