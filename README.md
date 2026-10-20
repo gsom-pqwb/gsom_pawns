@@ -1,10 +1,10 @@
 # gsom_pawns
 
-## Проверка завершения на Godot 4.7.2
+## Shutdown verification on Godot 4.7.2
 
-В демо поля `Main.__instance` и `Teleport.__teleports` используют базовые типы Node3D/Node; конкретные Main/Teleport проверяются и используются локально в методах. Статическая ссылка на Main очищается при выходе сцены из дерева. Эти правки не меняют API ядра Pawns.
+The demo fields `Main.__instance` and `Teleport.__teleports` use the base types Node3D/Node. Methods validate each value and use a local variable of the specific Main/Teleport type. The static Main reference is cleared when the scene exits the tree. These changes do not alter the Pawns core API.
 
-Проверены компиляция всех 38 скриптов и загрузка полного демо. При удалении сцены с последующей обработкой кадров завершение чистое. При прямом quit во время звука headless-прогон Godot 4.7.2 на Windows может сообщать об оставшихся аудиоресурсах; это воспроизводится и на одном стандартном AudioStreamPlayer без Pawns. Специальные обходы аудиосистемы в аддон не добавлялись. Отличие этого поведения от обычного запуска с аудиоустройством не установлено.
+All 38 scripts compile and the complete demo loads. Removing the scene and allowing subsequent frames to run produces a clean shutdown. A direct quit during playback can report remaining audio resources in a Godot 4.7.2 headless run on Windows; the same behavior reproduces with a single standard AudioStreamPlayer without Pawns. No audio-system workarounds were added to the addon. Whether this differs from a regular run with an audio device has not been established.
 
 Modular **Godot 4** framework for **character pawns**. Pawns interact
 with environment and triggers through handler nodes.
