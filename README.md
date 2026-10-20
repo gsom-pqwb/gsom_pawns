@@ -395,3 +395,7 @@ A few notes on FPS **human movement**:
 - Both AT (agtricks) and DH (destructo_hops) can be traversed in this demo and
 	are very similar to [HL1 version](https://www.youtube.com/watch?v=VbA7Dc4i898).
 	Maybe even slightly easier.
+
+## Contribution language
+
+Use English for all project-authored repository content and official communication, including source code, identifiers, comments, documentation, examples, configuration text, file and directory names, commit messages, issues, pull request titles and descriptions, reviews, and release notes.
