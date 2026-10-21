@@ -100,8 +100,13 @@ var body: Node3D = null:
 ## Set this value to define the intended head height of the body.
 ## When this value is set from [code]_ready[/code], it will be applied
 ## immediately without animation.
-var head_y_target: float = 0.0
+var head_y_target: float = 0.0:
+	set(value):
+		head_y_target = value
+		if not __head_started:
+			__head_y = value
 
+var __head_started: bool = false
 var __head_y: float = 0.0
 ## Get the animated head/eye/camera position Y.
 ##
@@ -141,6 +146,7 @@ func __assign_scene() -> void:
 		push_error("The `scene` must be a Node3D.")
 		__scene = __SCENE_DEFAULT
 		__body = __scene.instantiate()
+	__head_started = false
 	add_child(__body)
 	
 	__head_y = head_y_target
@@ -388,6 +394,7 @@ func _process(dt: float) -> void:
 	if Engine.is_editor_hint():
 		return
 	
+	__head_started = true
 	if __head_y == head_y_target:
 		return
 	
