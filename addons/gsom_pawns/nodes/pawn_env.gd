@@ -14,13 +14,13 @@ enum EnvBehavior {
 	ENTER_APPLY,
 	## Only remove the Env when pawn enters the area, do nothing on exit.
 	ENTER_REMOVE,
-	## Default: apply when pawn enters, remove on exit.
+	## Default: apply on entry, restore another overlapping source or remove on exit.
 	ENTER_APPLY_EXIT_REMOVE,
 	## Inverse: remove when pawn enters, apply on exit.
 	ENTER_REMOVE_EXIT_APPLY,
 	## Only apply the Env when pawn exits the area, do nothing on enter.
 	EXIT_APPLY,
-	## Only remove the Env when pawn enters the area, do nothing on enter.
+	## Only remove the Env when pawn exits the area, do nothing on enter.
 	EXIT_REMOVE,
 }
 
@@ -35,7 +35,62 @@ enum EnvBehavior {
 @export var behavior: EnvBehavior = EnvBehavior.ENTER_APPLY_EXIT_REMOVE
 
 ## Doesn't do anything, when disabled.
-@export var disabled := false
+@export var disabled: bool = false
+
+
+## Pawn info group containing weak environment sources, ordered by last entry.
+const SOURCES: String = "gsom_env_sources"
+
+var __pawns: Dictionary[int, WeakRef] = {}
+var __bodies: Dictionary[int, WeakRef] = {}
+
+
+func _exit_tree() -> void:
+	for pawn_id: int in __pawns.keys():
+		__on_body_exiting(pawn_id)
+
+
+## Active sources for the default enter/apply, exit/remove behavior.
+## The last source supplies the current environment value.
+static func sources_of(pawn: GsomPawn, field_name: String) -> Array[GsomPawnEnv]:
+	var sources: Array[GsomPawnEnv] = []
+	var refs: Array = pawn.get_info(SOURCES, field_name, [])
+	for source_ref: WeakRef in refs:
+		var source: GsomPawnEnv = source_ref.get_ref() as GsomPawnEnv
+		if is_instance_valid(source):
+			sources.append(source)
+	return sources
+
+
+func __store_sources(pawn: GsomPawn, sources: Array[GsomPawnEnv]) -> void:
+	if sources.is_empty():
+		pawn.erase_info(SOURCES, env_name)
+		pawn.erase_env(env_name)
+		return
+	var refs: Array[WeakRef] = []
+	for source: GsomPawnEnv in sources:
+		refs.append(weakref(source))
+	pawn.set_info(SOURCES, env_name, refs)
+	pawn.set_env(env_name, sources.back().env_value)
+
+
+func __on_body_exiting(pawn_id: int) -> void:
+	if not __pawns.has(pawn_id):
+		return
+	var pawn: GsomPawn = __pawns[pawn_id].get_ref() as GsomPawn
+	if is_instance_valid(pawn):
+		_erase_env(pawn)
+	else:
+		__untrack(pawn_id)
+
+
+func __untrack(pawn_id: int) -> void:
+	var body: Node3D = __bodies[pawn_id].get_ref() as Node3D if __bodies.has(pawn_id) else null
+	var callback: Callable = __on_body_exiting.bind(pawn_id)
+	if is_instance_valid(body) and body.tree_exiting.is_connected(callback):
+		body.tree_exiting.disconnect(callback)
+	__bodies.erase(pawn_id)
+	__pawns.erase(pawn_id)
 
 
 func _ready() -> void:
@@ -49,22 +104,43 @@ func attach() -> void:
 		return
 	
 	var parent_area: Area3D = parent
-	parent_area.body_entered.connect(__on_entered)
-	parent_area.body_exited.connect(__on_exited)
+	if not parent_area.body_entered.is_connected(__on_entered):
+		parent_area.body_entered.connect(__on_entered)
+	if not parent_area.body_exited.is_connected(__on_exited):
+		parent_area.body_exited.connect(__on_exited)
 
 
 ## Called to assign the env value.
 ##
 ## Override this for custom envs.
 func _apply_env(pawn: GsomPawn) -> void:
-	pawn.set_env(env_name, env_value)
+	if behavior != EnvBehavior.ENTER_APPLY_EXIT_REMOVE:
+		pawn.set_env(env_name, env_value)
+		return
+	var sources: Array[GsomPawnEnv] = sources_of(pawn, env_name)
+	sources.erase(self)
+	sources.append(self)
+	__store_sources(pawn, sources)
+	var pawn_id: int = pawn.get_instance_id()
+	if not __pawns.has(pawn_id):
+		__pawns[pawn_id] = weakref(pawn)
+		__bodies[pawn_id] = weakref(pawn.body)
+		pawn.body.tree_exiting.connect(__on_body_exiting.bind(pawn_id))
 
 
 ## Called to remove the env value.
 ##
 ## Override this for custom envs.
 func _erase_env(pawn: GsomPawn) -> void:
-	pawn.erase_env(env_name)
+	if behavior != EnvBehavior.ENTER_APPLY_EXIT_REMOVE:
+		pawn.erase_env(env_name)
+		return
+	__untrack(pawn.get_instance_id())
+	var sources: Array[GsomPawnEnv] = sources_of(pawn, env_name)
+	if not sources.has(self):
+		return
+	sources.erase(self)
+	__store_sources(pawn, sources)
 
 
 func __on_entered(body: Node3D) -> void:
@@ -74,7 +150,7 @@ func __on_entered(body: Node3D) -> void:
 	if behavior == EnvBehavior.EXIT_APPLY or behavior == EnvBehavior.EXIT_REMOVE:
 		return
 	
-	var pawn := body.get_parent() as GsomPawn
+	var pawn: GsomPawn = body.get_parent() as GsomPawn
 	if !pawn:
 		return
 	
@@ -88,13 +164,13 @@ func __on_entered(body: Node3D) -> void:
 
 
 func __on_exited(body: Node3D) -> void:
-	if disabled:
+	if disabled and behavior != EnvBehavior.ENTER_APPLY_EXIT_REMOVE:
 		return
 	
 	if behavior == EnvBehavior.ENTER_APPLY or behavior == EnvBehavior.ENTER_REMOVE:
 		return
 	
-	var pawn := body.get_parent() as GsomPawn
+	var pawn: GsomPawn = body.get_parent() as GsomPawn
 	if !pawn:
 		return
 	

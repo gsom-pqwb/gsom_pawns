@@ -310,7 +310,7 @@ it will apply and/or remove an env field on all entering and/or exiting pawns.
 - `ENTER_APPLY_EXIT_REMOVE` - Default: apply when pawn enters, remove on exit.
 - `ENTER_REMOVE_EXIT_APPLY` - Inverse: remove when pawn enters, apply on exit.
 - `EXIT_APPLY` - Only apply the Env when pawn exits the area, do nothing on enter.
-- `EXIT_REMOVE` - Only remove the Env when pawn enters the area, do nothing on enter.
+- `EXIT_REMOVE` - Only remove the Env when pawn exits the area, do nothing on enter.
 
 
 **Properties**
@@ -399,3 +399,41 @@ A few notes on FPS **human movement**:
 ## Contribution language
 
 Use English for all project-authored repository content and official communication, including source code, identifiers, comments, documentation, examples, configuration text, file and directory names, commit messages, issues, pull request titles and descriptions, reviews, and release notes.
+
+
+## Environment ownership and lifecycle
+
+With `ENTER_APPLY_EXIT_REMOVE`, sources with the same `env_name` form an ordered set:
+the last entered area wins, leaving it restores the last remaining source, and leaving
+all sources removes the field. Removing a source or its pawn body from the tree also
+cleans up its contribution. `GsomPawnEnv.sources_of(pawn, env_name)` returns the active
+sources in entry order. Internal pawn metadata in `GsomPawnEnv.SOURCES` contains weak
+references; consumers should use the query rather than editing that metadata.
+
+The other five behaviors remain event commands: values applied by them can persist
+after leaving or deleting the area. They do not participate in source ownership.
+Avoid mixing these commands with owned sources for the same field. Configure
+`behavior` and `env_name` before entry; changing them while occupied is unsupported.
+Disabling ignores new entries; existing owned contributions are still removed on exit.
+Subclasses overriding `_apply_env` or `_erase_env` must call `super` to retain ownership
+handling, and must call `super._exit_tree()` if they override lifecycle cleanup.
+`attach()` is safe to call more than once.
+
+Initial `head_y_target` changes, including from a parent `_ready()`, apply immediately
+until the first pawn process frame. Later changes interpolate using `head_speed`.
+
+### Isolated regression suite
+
+Run outside the demo project to test only the distributable core, without Blender,
+network examples, or an external test framework. Supply your pinned Godot shell wrapper
+and a new output directory (the runner refuses to overwrite an existing directory):
+
+```sh
+python tests/environments/run.py --godot-wrapper /path/to/tools/godot.sh --output /path/to/build/pawns-env
+```
+
+The suite covers overlap restoration, source/body deletion, reentry, repeated attachment,
+legacy event modes, and initial versus interpolated head height. Import/runtime diagnostics
+and a missing success marker fail the run. `--addon-source` can select an older payload
+for comparison. On Godot 4.7.2 the original core failed five assertions and reported two
+duplicate signal connections; the updated core reports `PAWNS_REGRESSION failures=0`.
