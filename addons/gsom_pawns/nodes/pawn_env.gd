@@ -54,7 +54,8 @@ func _exit_tree() -> void:
 ## The last source supplies the current environment value.
 static func sources_of(pawn: GsomPawn, field_name: String) -> Array[GsomPawnEnv]:
 	var sources: Array[GsomPawnEnv] = []
-	var refs: Array = pawn.get_info(SOURCES, field_name, [])
+	var refs: Array[WeakRef] = []
+	refs.assign(pawn.get_info(SOURCES, field_name, []))
 	for source_ref: WeakRef in refs:
 		var source: GsomPawnEnv = source_ref.get_ref() as GsomPawnEnv
 		if is_instance_valid(source):
