@@ -417,7 +417,8 @@ Avoid mixing these commands with owned sources for the same field. Configure
 Disabling ignores new entries; existing owned contributions are still removed on exit.
 Subclasses overriding `_apply_env` or `_erase_env` must call `super` to retain ownership
 handling, and must call `super._exit_tree()` if they override lifecycle cleanup.
-`attach()` is safe to call more than once.
+`attach()` is safe to call more than once. Tree exit disconnects the old area; tree
+entry reconnects to the current parent, including after marker removal or reparenting.
 
 Initial `head_y_target` changes, including from a parent `_ready()`, apply immediately
 until the first pawn process frame. Later changes interpolate using `head_speed`.

@@ -41,11 +41,17 @@ enum EnvBehavior {
 ## Pawn info group containing weak environment sources, ordered by last entry.
 const SOURCES: String = "gsom_env_sources"
 
+var __area: WeakRef
 var __pawns: Dictionary[int, WeakRef] = {}
 var __bodies: Dictionary[int, WeakRef] = {}
 
 
+func _enter_tree() -> void:
+	attach()
+
+
 func _exit_tree() -> void:
+	__detach()
 	for pawn_id: int in __pawns.keys():
 		__on_body_exiting(pawn_id)
 
@@ -98,13 +104,25 @@ func _ready() -> void:
 	attach()
 
 
-## Call this from _ready() if you extend this class.
+func __detach() -> void:
+	var area: Area3D = __area.get_ref() as Area3D if __area != null else null
+	if is_instance_valid(area):
+		if area.body_entered.is_connected(__on_entered):
+			area.body_entered.disconnect(__on_entered)
+		if area.body_exited.is_connected(__on_exited):
+			area.body_exited.disconnect(__on_exited)
+	__area = null
+
+
+## Called automatically on tree entry; also safe to call explicitly.
 func attach() -> void:
+	__detach()
 	var parent: Node = get_parent()
 	if parent is not Area3D:
 		return
 	
 	var parent_area: Area3D = parent
+	__area = weakref(parent_area)
 	if not parent_area.body_entered.is_connected(__on_entered):
 		parent_area.body_entered.connect(__on_entered)
 	if not parent_area.body_exited.is_connected(__on_exited):
